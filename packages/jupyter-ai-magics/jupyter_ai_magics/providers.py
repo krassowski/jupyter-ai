@@ -58,7 +58,12 @@ class MultilineTextField(BaseModel):
     key: str
     label: str
 
-Field = Union[TextField, MultilineTextField]
+class IntegerField(BaseModel):
+    type: Literal["integer"] = "integer"
+    key: str
+    label: str
+
+Field = Union[TextField, MultilineTextField, IntegerField]
 
 class BaseProvider(BaseLangchainProvider):
     #
@@ -165,6 +170,9 @@ class GPT4AllProvider(BaseProvider, GPT4All):
             kwargs["backend"] = "gptj"
 
         kwargs['allow_download'] = True
+        n_threads = kwargs.get('n_threads', None)
+        if n_threads is not None:
+            kwargs['n_threads'] = max(int(n_threads), 1)
         super().__init__(**kwargs)
 
     id = "gpt4all"
@@ -179,6 +187,12 @@ class GPT4AllProvider(BaseProvider, GPT4All):
     model_id_key = "model"
     pypi_package_deps = ["gpt4all"]
     auth_strategy = None
+    fields = [
+        IntegerField(
+            key="n_threads",
+            label="Threads"
+        )
+    ]
 
 
 HUGGINGFACE_HUB_VALID_TASKS = ("text2text-generation", "text-generation", "text-to-image")

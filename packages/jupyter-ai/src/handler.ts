@@ -204,7 +204,13 @@ export namespace AiService {
     label: string;
   };
 
-  export type Field = TextField | MultilineTextField;
+  export type IntegerField = {
+    type: 'integer';
+    key: string;
+    label: string;
+  };
+
+  export type Field = TextField | MultilineTextField | IntegerField;
 
   export type ListProvidersEntry = {
     id: string;
