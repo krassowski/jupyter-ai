@@ -7,6 +7,7 @@ from .providers import (
     AI21Provider,
     AnthropicProvider,
     CohereProvider,
+    GPT4AllProvider,
     HfHubProvider,
     OpenAIProvider,
     ChatOpenAIProvider,
