@@ -24,13 +24,17 @@ dependencies = [
     "ipython",
     "pydantic",
     "importlib_metadata~=5.2.0",
-    "langchain==0.0.196",
+    "langchain==0.0.220",
     "typing_extensions==4.5.0",
     "click~=8.0",
     "jsonpath-ng~=1.5.3",
 ]
 
 [project.optional-dependencies]
+dev = [
+    "pre-commit~=3.3.3"
+]
+
 test = [
     "coverage",
     "pytest",
@@ -40,7 +44,7 @@ test = [
 
 all = [
     "ai21",
-    "anthropic",
+    "anthropic~=0.2.10",
     "cohere",
     "gpt4all",
     "huggingface_hub",
@@ -60,6 +64,7 @@ openai = "jupyter_ai_magics:OpenAIProvider"
 openai-chat = "jupyter_ai_magics:ChatOpenAIProvider"
 openai-chat-new = "jupyter_ai_magics:ChatOpenAINewProvider"
 sagemaker-endpoint = "jupyter_ai_magics:SmEndpointProvider"
+amazon-bedrock = "jupyter_ai_magics:BedrockProvider"
 
 [project.entry-points."jupyter_ai.embeddings_model_providers"]
 cohere = "jupyter_ai_magics:CohereEmbeddingsProvider"

@@ -14,7 +14,7 @@ export class ChatHandler implements IDisposable {
   /**
    * ID of the connection. Requires `await initialize()`.
    */
-  id: string = '';
+  id = '';
 
   /**
    * Create a new chat handler.
@@ -29,10 +29,9 @@ export class ChatHandler implements IDisposable {
    * resolved when server acknowledges connection and sends the client ID. This
    * must be awaited before calling any other method.
    */
-  public async initialize() {
+  public async initialize(): Promise<void> {
     await this._initialize();
   }
-
 
   /**
    * Sends a message across the WebSocket. Promise resolves to the message ID
@@ -140,12 +139,16 @@ export class ChatHandler implements IDisposable {
     (value: AiService.AgentChatMessage) => void
   > = {};
 
-  private _onClose(reject: any) {
-    reject(new Error("Chat UI websocket disconnected"))
-    console.error("Chat UI websocket disconnected")
-    const delaySeconds = 1
-    console.info(`Will try to reconnect in ${delaySeconds} s.`)
-    setTimeout(async () => await this._initialize(), delaySeconds * 1000);
+  private _onClose(e: CloseEvent, reject: any) {
+    reject(new Error('Chat UI websocket disconnected'));
+    console.error('Chat UI websocket disconnected');
+    // only attempt re-connect if there was an abnormal closure
+    // WebSocket status codes defined in RFC 6455: https://www.rfc-editor.org/rfc/rfc6455.html#section-7.4.1
+    if (e.code === 1006) {
+      const delaySeconds = 1;
+      console.info(`Will try to reconnect in ${delaySeconds} s.`);
+      setTimeout(async () => await this._initialize(), delaySeconds * 1000);
+    }
   }
 
   private _initialize(): Promise<void> {
@@ -153,28 +156,28 @@ export class ChatHandler implements IDisposable {
       if (this.isDisposed) {
         return;
       }
-      console.log("Creating a new websocket connection for chat...");
+      console.log('Creating a new websocket connection for chat...');
       const { token, WebSocket, wsUrl } = this.serverSettings;
       const url =
         URLExt.join(wsUrl, CHAT_SERVICE_URL) +
         (token ? `?token=${encodeURIComponent(token)}` : '');
-      
-        const socket = (this._socket = new WebSocket(url));
-        socket.onclose = () => this._onClose(reject);
-        socket.onerror = (e) => reject(e);
-        socket.onmessage = msg =>
-          msg.data && this._onMessage(JSON.parse(msg.data));
-        
-        const listenForConnection = (message: AiService.Message) => {
-          if (message.type !== 'connection') {
-            return;
-          }
-          this.id = message.client_id;
-          resolve();
-          this.removeListener(listenForConnection);
-        };
-  
-        this.addListener(listenForConnection);
+
+      const socket = (this._socket = new WebSocket(url));
+      socket.onclose = e => this._onClose(e, reject);
+      socket.onerror = e => reject(e);
+      socket.onmessage = msg =>
+        msg.data && this._onMessage(JSON.parse(msg.data));
+
+      const listenForConnection = (message: AiService.Message) => {
+        if (message.type !== 'connection') {
+          return;
+        }
+        this.id = message.client_id;
+        resolve();
+        this.removeListener(listenForConnection);
+      };
+
+      this.addListener(listenForConnection);
     });
   }
 

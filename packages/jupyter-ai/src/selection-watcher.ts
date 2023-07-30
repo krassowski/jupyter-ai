@@ -19,7 +19,7 @@ function getEditor(widget: Widget | null) {
     return null;
   }
 
-  let editor: CodeEditor.IEditor | undefined;
+  let editor: CodeEditor.IEditor | null | undefined;
   const { content } = widget;
 
   if (content instanceof FileEditor) {
@@ -50,12 +50,18 @@ function getTextSelection(widget: Widget | null): Selection | null {
     cellId = widget.content.activeCell?.model.id;
   }
 
-  let { start, end, ...selectionObj } = editor.getSelection();
+  const selectionObj = editor.getSelection();
+  let { start, end } = selectionObj;
   const startOffset = editor.getOffsetAt(start);
   const endOffset = editor.getOffsetAt(end);
   const text = editor.model.sharedModel
     .getSource()
     .substring(startOffset, endOffset);
+
+  // Do not return a Selection object if no text is selected
+  if (!text) {
+    return null;
+  }
 
   // ensure start <= end
   // required for editor.model.sharedModel.updateSource()
@@ -105,11 +111,11 @@ export class SelectionWatcher {
     setInterval(this._poll.bind(this), 200);
   }
 
-  get selectionChanged() {
+  get selectionChanged(): Signal<this, Selection | null> {
     return this._selectionChanged;
   }
 
-  replaceSelection(selection: Selection) {
+  replaceSelection(selection: Selection): void {
     // unfortunately shell.currentWidget doesn't update synchronously after
     // shell.activateById(), which is why we have to get a reference to the
     // widget manually.
@@ -149,7 +155,7 @@ export class SelectionWatcher {
     editor.setSelection({ start: newPosition, end: newPosition });
   }
 
-  protected _poll() {
+  protected _poll(): void {
     const prevSelection = this._selection;
     const currSelection = getTextSelection(this._mainAreaWidget);
 

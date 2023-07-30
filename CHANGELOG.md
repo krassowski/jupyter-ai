@@ -2,6 +2,146 @@
 
 <!-- <START NEW CHANGELOG ENTRY> -->
 
+This is currently the latest major version, and supports exclusively JupyterLab 4.
+
+Existing users who are unable to migrate to JupyterLab 3 immediately should use v1.x. However, feature releases and bug fixes will only be backported to v1.x as we deem necessary, so we highly encourage existing Jupyter AI users to migrate to JupyterLab 4 and Jupyter AI v2 as soon as possible to enjoy all of the latest features we are currently developing.
+
+Thank you all for your support of Jupyter AI! 🎉
+
+## 2.0.0
+
+([Full Changelog](https://github.com/jupyterlab/jupyter-ai/compare/@jupyter-ai/core@1.0.0...4ad7fa695b89abc0df4d510f20e9036b6907fd51))
+
+### Enhancements made
+
+- Upgrade to JupyterLab 4 [#296](https://github.com/jupyterlab/jupyter-ai/pull/296) ([@dlqqq](https://github.com/dlqqq))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyterlab/jupyter-ai/graphs/contributors?from=2023-07-27&to=2023-07-27&type=c))
+
+[@dlqqq](https://github.com/search?q=repo%3Ajupyterlab%2Fjupyter-ai+involves%3Adlqqq+updated%3A2023-07-27..2023-07-27&type=Issues)
+
+<!-- <END NEW CHANGELOG ENTRY> -->
+
+## 1.0.0
+
+This release serves exclusively to dedicate a major version to the 1.x branch providing JupyterLab 3 support.
+
+([Full Changelog](https://github.com/jupyterlab/jupyter-ai/compare/@jupyter-ai/core@0.10.1...0afca1c387e19a9da1f31080a69d8a16e71a310b))
+
+### Enhancements made
+
+- Chat help message on load [#277](https://github.com/jupyterlab/jupyter-ai/pull/277) ([@JasonWeill](https://github.com/JasonWeill))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyterlab/jupyter-ai/graphs/contributors?from=2023-07-21&to=2023-07-27&type=c))
+
+[@andrii-i](https://github.com/search?q=repo%3Ajupyterlab%2Fjupyter-ai+involves%3Aandrii-i+updated%3A2023-07-21..2023-07-27&type=Issues) | [@JasonWeill](https://github.com/search?q=repo%3Ajupyterlab%2Fjupyter-ai+involves%3AJasonWeill+updated%3A2023-07-21..2023-07-27&type=Issues)
+
+## 0.10.1
+
+([Full Changelog](https://github.com/jupyterlab/jupyter-ai/compare/@jupyter-ai/core@0.10.0...4049084fc1c62bc00bdd2eeddd1b4630094a5a57))
+
+### Bugs fixed
+
+- fix /learn TypeError [#286](https://github.com/jupyterlab/jupyter-ai/pull/286) ([@dlqqq](https://github.com/dlqqq))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyterlab/jupyter-ai/graphs/contributors?from=2023-07-18&to=2023-07-21&type=c))
+
+[@dlqqq](https://github.com/search?q=repo%3Ajupyterlab%2Fjupyter-ai+involves%3Adlqqq+updated%3A2023-07-18..2023-07-21&type=Issues)
+
+## 0.10.0
+
+([Full Changelog](https://github.com/jupyterlab/jupyter-ai/compare/@jupyter-ai/core@0.9.0...70725c0ff9b5eb313294bdab6e3ff183a6aad88b))
+
+### Enhancements made
+
+- Allows specifying chunk size and overlap with /learn [#267](https://github.com/jupyterlab/jupyter-ai/pull/267) ([@3coins](https://github.com/3coins))
+- Added Bedrock provider [#263](https://github.com/jupyterlab/jupyter-ai/pull/263) ([@3coins](https://github.com/3coins))
+- Validate JSON for request schema [#261](https://github.com/jupyterlab/jupyter-ai/pull/261) ([@JasonWeill](https://github.com/JasonWeill))
+- Updates docs with reset, model lists [#254](https://github.com/jupyterlab/jupyter-ai/pull/254) ([@JasonWeill](https://github.com/JasonWeill))
+- Migrate to Dask [#244](https://github.com/jupyterlab/jupyter-ai/pull/244) ([@dlqqq](https://github.com/dlqqq))
+
+### Bugs fixed
+
+- Sets font color for intro text [#265](https://github.com/jupyterlab/jupyter-ai/pull/265) ([@JasonWeill](https://github.com/JasonWeill))
+- Added Bedrock provider [#263](https://github.com/jupyterlab/jupyter-ai/pull/263) ([@3coins](https://github.com/3coins))
+
+### Maintenance and upkeep improvements
+
+### Documentation improvements
+
+- Updates docs with reset, model lists [#254](https://github.com/jupyterlab/jupyter-ai/pull/254) ([@JasonWeill](https://github.com/JasonWeill))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyterlab/jupyter-ai/graphs/contributors?from=2023-07-05&to=2023-07-18&type=c))
+
+[@3coins](https://github.com/search?q=repo%3Ajupyterlab%2Fjupyter-ai+involves%3A3coins+updated%3A2023-07-05..2023-07-18&type=Issues) | [@dlqqq](https://github.com/search?q=repo%3Ajupyterlab%2Fjupyter-ai+involves%3Adlqqq+updated%3A2023-07-05..2023-07-18&type=Issues) | [@JasonWeill](https://github.com/search?q=repo%3Ajupyterlab%2Fjupyter-ai+involves%3AJasonWeill+updated%3A2023-07-05..2023-07-18&type=Issues) | [@pre-commit-ci](https://github.com/search?q=repo%3Ajupyterlab%2Fjupyter-ai+involves%3Apre-commit-ci+updated%3A2023-07-05..2023-07-18&type=Issues)
+
+## 0.9.0
+
+([Full Changelog](https://github.com/jupyterlab/jupyter-ai/compare/@jupyter-ai/core@0.8.0...b62c8160f8e078fe8f7145be4d12c7982d9eafdb))
+
+### Bugs fixed
+
+- Fixes "replace selection" behavior when nothing is selected [#251](https://github.com/jupyterlab/jupyter-ai/pull/251) ([@JasonWeill](https://github.com/JasonWeill))
+- Adds __str__ method for TextWithMetadata [#250](https://github.com/jupyterlab/jupyter-ai/pull/250) ([@JasonWeill](https://github.com/JasonWeill))
+- Fix settings update and vertical scroll [#249](https://github.com/jupyterlab/jupyter-ai/pull/249) ([@3coins](https://github.com/3coins))
+- Truncate chat history to last 2 conversations [#240](https://github.com/jupyterlab/jupyter-ai/pull/240) ([@3coins](https://github.com/3coins))
+
+### Maintenance and upkeep improvements
+
+- Use pre-commit [#237](https://github.com/jupyterlab/jupyter-ai/pull/237) ([@dlqqq](https://github.com/dlqqq))
+- Removes unused dialog code [#234](https://github.com/jupyterlab/jupyter-ai/pull/234) ([@JasonWeill](https://github.com/JasonWeill))
+- Change sagemaker example to make more sense [#231](https://github.com/jupyterlab/jupyter-ai/pull/231) ([@JasonWeill](https://github.com/JasonWeill))
+- add JS lint workflow [#230](https://github.com/jupyterlab/jupyter-ai/pull/230) ([@JasonWeill](https://github.com/JasonWeill))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyterlab/jupyter-ai/graphs/contributors?from=2023-06-16&to=2023-07-05&type=c))
+
+[@3coins](https://github.com/search?q=repo%3Ajupyterlab%2Fjupyter-ai+involves%3A3coins+updated%3A2023-06-16..2023-07-05&type=Issues) | [@dlqqq](https://github.com/search?q=repo%3Ajupyterlab%2Fjupyter-ai+involves%3Adlqqq+updated%3A2023-06-16..2023-07-05&type=Issues) | [@JasonWeill](https://github.com/search?q=repo%3Ajupyterlab%2Fjupyter-ai+involves%3AJasonWeill+updated%3A2023-06-16..2023-07-05&type=Issues) | [@pre-commit-ci](https://github.com/search?q=repo%3Ajupyterlab%2Fjupyter-ai+involves%3Apre-commit-ci+updated%3A2023-06-16..2023-07-05&type=Issues)
+
+## 0.8.0
+
+([Full Changelog](https://github.com/jupyterlab/jupyter-ai/compare/@jupyter-ai/core@0.7.3...4169ebf0274b177573dce43197d2c2e5169fc71b))
+
+### Enhancements made
+
+- Support SageMaker Endpoints in chat [#197](https://github.com/jupyterlab/jupyter-ai/pull/197) ([@dlqqq](https://github.com/dlqqq))
+- Migrate to click [#188](https://github.com/jupyterlab/jupyter-ai/pull/188) ([@dlqqq](https://github.com/dlqqq))
+- Adds %ai error magic command to explain the most recent error [#170](https://github.com/jupyterlab/jupyter-ai/pull/170) ([@JasonWeill](https://github.com/JasonWeill))
+- Register, update, and delete aliases [#136](https://github.com/jupyterlab/jupyter-ai/pull/136) ([@JasonWeill](https://github.com/JasonWeill))
+
+### Bugs fixed
+
+- Only attempt re-connect on abnormal closure [#222](https://github.com/jupyterlab/jupyter-ai/pull/222) ([@3coins](https://github.com/3coins))
+- Update system prompt [#221](https://github.com/jupyterlab/jupyter-ai/pull/221) ([@JasonWeill](https://github.com/JasonWeill))
+- Fixes double call to cell help command [#220](https://github.com/jupyterlab/jupyter-ai/pull/220) ([@JasonWeill](https://github.com/JasonWeill))
+- Creates a new websocket connection in case of disconnect [#219](https://github.com/jupyterlab/jupyter-ai/pull/219) ([@3coins](https://github.com/3coins))
+- SageMaker endpoint magic command support [#215](https://github.com/jupyterlab/jupyter-ai/pull/215) ([@JasonWeill](https://github.com/JasonWeill))
+- Removes comment from magic command [#213](https://github.com/jupyterlab/jupyter-ai/pull/213) ([@JasonWeill](https://github.com/JasonWeill))
+
+### Maintenance and upkeep improvements
+
+- Added python version to release action [#223](https://github.com/jupyterlab/jupyter-ai/pull/223) ([@3coins](https://github.com/3coins))
+- Pinning python version to 3.10.x [#212](https://github.com/jupyterlab/jupyter-ai/pull/212) ([@3coins](https://github.com/3coins))
+
+### Documentation improvements
+
+- Add documentation for running magics in remote kernels [#196](https://github.com/jupyterlab/jupyter-ai/pull/196) ([@dlqqq](https://github.com/dlqqq))
+
+### Contributors to this release
+
+([GitHub contributors page for this release](https://github.com/jupyterlab/jupyter-ai/graphs/contributors?from=2023-05-26&to=2023-06-16&type=c))
+
+[@3coins](https://github.com/search?q=repo%3Ajupyterlab%2Fjupyter-ai+involves%3A3coins+updated%3A2023-05-26..2023-06-16&type=Issues) | [@dlqqq](https://github.com/search?q=repo%3Ajupyterlab%2Fjupyter-ai+involves%3Adlqqq+updated%3A2023-05-26..2023-06-16&type=Issues) | [@JasonWeill](https://github.com/search?q=repo%3Ajupyterlab%2Fjupyter-ai+involves%3AJasonWeill+updated%3A2023-05-26..2023-06-16&type=Issues)
+
 ## 0.7.3
 
 ([Full Changelog](https://github.com/jupyterlab/jupyter-ai/compare/@jupyter-ai/core@0.7.2...241f58adf8d52d68c8c57fed6a04cbcd558f17bc))
@@ -25,8 +165,6 @@
 ([GitHub contributors page for this release](https://github.com/jupyterlab/jupyter-ai/graphs/contributors?from=2023-05-19&to=2023-05-26&type=c))
 
 [@3coins](https://github.com/search?q=repo%3Ajupyterlab%2Fjupyter-ai+involves%3A3coins+updated%3A2023-05-19..2023-05-26&type=Issues) | [@dlqqq](https://github.com/search?q=repo%3Ajupyterlab%2Fjupyter-ai+involves%3Adlqqq+updated%3A2023-05-19..2023-05-26&type=Issues) | [@JasonWeill](https://github.com/search?q=repo%3Ajupyterlab%2Fjupyter-ai+involves%3AJasonWeill+updated%3A2023-05-19..2023-05-26&type=Issues) | [@mschroering](https://github.com/search?q=repo%3Ajupyterlab%2Fjupyter-ai+involves%3Amschroering+updated%3A2023-05-19..2023-05-26&type=Issues)
-
-<!-- <END NEW CHANGELOG ENTRY> -->
 
 ## 0.7.2
 

@@ -1,8 +1,13 @@
 from typing import ClassVar, List, Type
+
 from jupyter_ai_magics.providers import AuthStrategy, EnvAuthStrategy, Field
-from pydantic import BaseModel, Extra
-from langchain.embeddings import OpenAIEmbeddings, CohereEmbeddings, HuggingFaceHubEmbeddings
+from langchain.embeddings import (
+    CohereEmbeddings,
+    HuggingFaceHubEmbeddings,
+    OpenAIEmbeddings,
+)
 from langchain.embeddings.base import Embeddings
+from pydantic import BaseModel, Extra
 
 
 class BaseEmbeddingsProvider(BaseModel):
@@ -33,45 +38,48 @@ class BaseEmbeddingsProvider(BaseModel):
 
     model_id: str
 
-    provider_klass: ClassVar[Type[Embeddings]]    
-
     registry: ClassVar[bool] = False
     """Whether this provider is a registry provider."""
 
     fields: ClassVar[List[Field]] = []
     """Fields expected by this provider in its constructor. Each `Field` `f`
     should be passed as a keyword argument, keyed by `f.key`."""
-    
 
-class OpenAIEmbeddingsProvider(BaseEmbeddingsProvider):
+    def __init__(self, *args, **kwargs):
+        try:
+            assert kwargs["model_id"]
+        except:
+            raise AssertionError(
+                "model_id was not specified. Please specify it as a keyword argument."
+            )
+
+        model_kwargs = {}
+        model_kwargs[self.__class__.model_id_key] = kwargs["model_id"]
+
+        super().__init__(*args, **kwargs, **model_kwargs)
+
+
+class OpenAIEmbeddingsProvider(BaseEmbeddingsProvider, OpenAIEmbeddings):
     id = "openai"
     name = "OpenAI"
-    models = [
-        "text-embedding-ada-002"
-    ]
+    models = ["text-embedding-ada-002"]
     model_id_key = "model"
     pypi_package_deps = ["openai"]
     auth_strategy = EnvAuthStrategy(name="OPENAI_API_KEY")
-    provider_klass = OpenAIEmbeddings
 
 
-class CohereEmbeddingsProvider(BaseEmbeddingsProvider):
+class CohereEmbeddingsProvider(BaseEmbeddingsProvider, CohereEmbeddings):
     id = "cohere"
     name = "Cohere"
-    models = [
-        'large',
-        'multilingual-22-12',
-        'small'
-    ]
+    models = ["large", "multilingual-22-12", "small"]
     model_id_key = "model"
     pypi_package_deps = ["cohere"]
     auth_strategy = EnvAuthStrategy(name="COHERE_API_KEY")
-    provider_klass = CohereEmbeddings
 
 
-class HfHubEmbeddingsProvider(BaseEmbeddingsProvider):
+class HfHubEmbeddingsProvider(BaseEmbeddingsProvider, HuggingFaceHubEmbeddings):
     id = "huggingface_hub"
-    name = "HuggingFace Hub"
+    name = "Hugging Face Hub"
     models = ["*"]
     model_id_key = "repo_id"
     # ipywidgets needed to suppress tqdm warning
@@ -79,5 +87,4 @@ class HfHubEmbeddingsProvider(BaseEmbeddingsProvider):
     # tqdm is a dependency of huggingface_hub
     pypi_package_deps = ["huggingface_hub", "ipywidgets"]
     auth_strategy = EnvAuthStrategy(name="HUGGINGFACEHUB_API_TOKEN")
-    provider_klass = HuggingFaceHubEmbeddings
     registry = True

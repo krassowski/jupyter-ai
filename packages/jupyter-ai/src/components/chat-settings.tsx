@@ -74,7 +74,7 @@ function fromRegistryProvider(
  * provider is not a registry provider. Otherwise, it is set to
  * `<provider-id>:*`.
  */
-export function ChatSettings() {
+export function ChatSettings(): JSX.Element {
   const [state, setState] = useState<ChatSettingsState>(
     ChatSettingsState.Loading
   );
@@ -289,7 +289,8 @@ export function ChatSettings() {
       sx={{
         padding: 4,
         boxSizing: 'border-box',
-        '& > .MuiAlert-root': { marginBottom: 2 }
+        '& > .MuiAlert-root': { marginBottom: 2 },
+        overflowY: 'auto'
       }}
     >
       {state === ChatSettingsState.SubmitError && (

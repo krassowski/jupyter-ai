@@ -18,14 +18,14 @@ jobs:
       uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
 
     - name: Install dependencies
-      run: python -m pip install -U jupyterlab~=3.1
+      run: python -m pip install -U jupyterlab~=4.0
 
     - name: Lint the extension
       run: |
         set -eux
         jlpm
         jlpm run lint:check
-{% if cookiecutter.test.lower().startswith('y') %}    
+{% if cookiecutter.test.lower().startswith('y') %}
     - name: Test the extension
       run: |
         set -eux
@@ -77,7 +77,7 @@ jobs:
         sudo rm -rf $(which node)
         sudo rm -rf $(which node)
 
-        pip install "jupyterlab~=3.1" {{ cookiecutter.python_name }}*.whl
+        pip install "jupyterlab~=4.0" {{ cookiecutter.python_name }}*.whl
 
         jupyter labextension list
         jupyter labextension list 2>&1 | grep -ie "{{ cookiecutter.labextension_name }}.*OK"
@@ -102,11 +102,11 @@ jobs:
       uses: actions/download-artifact@v3
       with:
         name: extension-artifacts
-        
+
     - name: Install the extension
       run: |
         set -eux
-        python -m pip install "jupyterlab~=3.1" {{ cookiecutter.python_name }}*.whl
+        python -m pip install "jupyterlab~=4.0" {{ cookiecutter.python_name }}*.whl
 
     - name: Install dependencies
       working-directory: ui-tests

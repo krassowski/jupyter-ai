@@ -1,42 +1,48 @@
-from typing import Any, ClassVar, Dict, List, Union, Literal, Optional
+import asyncio
 import base64
+import copy
+import functools
 import io
 import json
-import copy
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any, ClassVar, Coroutine, Dict, List, Literal, Optional, Union
 
-from jsonpath_ng import jsonpath, parse
-from langchain.schema import BaseModel as BaseLangchainProvider
+from jsonpath_ng import parse
+from langchain.chat_models import ChatOpenAI
 from langchain.llms import (
     AI21,
     Anthropic,
+    Bedrock,
     Cohere,
     HuggingFaceHub,
     OpenAI,
     OpenAIChat,
     GPT4All,
-    SagemakerEndpoint
+    SagemakerEndpoint,
 )
 from langchain.llms.sagemaker_endpoint import LLMContentHandler
-from langchain.utils import get_from_dict_or_env
 from langchain.llms.utils import enforce_stop_tokens
-
+from langchain.utils import get_from_dict_or_env
 from pydantic import BaseModel, Extra, root_validator
-from langchain.chat_models import ChatOpenAI
+
 
 class EnvAuthStrategy(BaseModel):
     """Require one auth token via an environment variable."""
+
     type: Literal["env"] = "env"
     name: str
 
 
 class MultiEnvAuthStrategy(BaseModel):
     """Require multiple auth tokens via multiple environment variables."""
+
     type: Literal["file"] = "file"
     names: List[str]
 
 
 class AwsAuthStrategy(BaseModel):
     """Require AWS authentication via Boto3"""
+
     type: Literal["aws"] = "aws"
 
 
@@ -48,15 +54,21 @@ AuthStrategy = Optional[
     ]
 ]
 
-class TextField(BaseModel):
-    type: Literal["text"] = "text"
-    key: str
-    label: str
 
-class MultilineTextField(BaseModel):
-    type: Literal["text-multiline"] = "text-multiline"
+class Field(BaseModel):
     key: str
     label: str
+    # "text" accepts any text
+    format: Literal["json", "jsonpath", "text"]
+
+
+class TextField(Field):
+    type: Literal["text"] = "text"
+
+
+class MultilineTextField(Field):
+    type: Literal["text-multiline"] = "text-multiline"
+
 
 class IntegerField(BaseModel):
     type: Literal["integer"] = "integer"
@@ -65,7 +77,8 @@ class IntegerField(BaseModel):
 
 Field = Union[TextField, MultilineTextField, IntegerField]
 
-class BaseProvider(BaseLangchainProvider):
+
+class BaseProvider(BaseModel):
     #
     # pydantic config
     #
@@ -85,6 +98,10 @@ class BaseProvider(BaseLangchainProvider):
     """List of supported models by their IDs. For registry providers, this will
     be just ["*"]."""
 
+    help: ClassVar[str] = None
+    """Text to display in lieu of a model list for a registry provider that does
+    not provide a list of models."""
+
     model_id_key: ClassVar[str] = ...
     """Kwarg expected by the upstream LangChain provider."""
 
@@ -99,7 +116,7 @@ class BaseProvider(BaseLangchainProvider):
     """Whether this provider is a registry provider."""
 
     fields: ClassVar[List[Field]] = []
-    """User inputs expected by this provider when initializing it. Each `Field` `f` 
+    """User inputs expected by this provider when initializing it. Each `Field` `f`
     should be passed in the constructor as a keyword argument, keyed by `f.key`."""
 
     #
@@ -111,14 +128,27 @@ class BaseProvider(BaseLangchainProvider):
         try:
             assert kwargs["model_id"]
         except:
-            raise AssertionError("model_id was not specified. Please specify it as a keyword argument.")
+            raise AssertionError(
+                "model_id was not specified. Please specify it as a keyword argument."
+            )
 
         model_kwargs = {}
-        model_kwargs[self.__class__.model_id_key] = kwargs["model_id"]
+        if self.__class__.model_id_key != "model_id":
+            model_kwargs[self.__class__.model_id_key] = kwargs["model_id"]
 
         super().__init__(*args, **kwargs, **model_kwargs)
 
-    
+    async def _call_in_executor(self, *args, **kwargs) -> Coroutine[Any, Any, str]:
+        """
+        Calls self._call() asynchronously in a separate thread for providers
+        without an async implementation. Requires the event loop to be running.
+        """
+        executor = ThreadPoolExecutor(max_workers=1)
+        loop = asyncio.get_running_loop()
+        _call_with_args = functools.partial(self._call, *args, **kwargs)
+        return await loop.run_in_executor(executor, _call_with_args)
+
+
 class AI21Provider(BaseProvider, AI21):
     id = "ai21"
     name = "AI21"
@@ -137,6 +167,10 @@ class AI21Provider(BaseProvider, AI21):
     pypi_package_deps = ["ai21"]
     auth_strategy = EnvAuthStrategy(name="AI21_API_KEY")
 
+    async def _acall(self, *args, **kwargs) -> Coroutine[Any, Any, str]:
+        return await self._call_in_executor(*args, **kwargs)
+
+
 class AnthropicProvider(BaseProvider, Anthropic):
     id = "anthropic"
     name = "Anthropic"
@@ -151,6 +185,7 @@ class AnthropicProvider(BaseProvider, Anthropic):
     pypi_package_deps = ["anthropic"]
     auth_strategy = EnvAuthStrategy(name="ANTHROPIC_API_KEY")
 
+
 class CohereProvider(BaseProvider, Cohere):
     id = "cohere"
     name = "Cohere"
@@ -158,6 +193,9 @@ class CohereProvider(BaseProvider, Cohere):
     model_id_key = "model"
     pypi_package_deps = ["cohere"]
     auth_strategy = EnvAuthStrategy(name="COHERE_API_KEY")
+
+    async def _acall(self, *args, **kwargs) -> Coroutine[Any, Any, str]:
+        return await self._call_in_executor(*args, **kwargs)
 
 
 class GPT4AllProvider(BaseProvider, GPT4All):
@@ -195,13 +233,22 @@ class GPT4AllProvider(BaseProvider, GPT4All):
     ]
 
 
-HUGGINGFACE_HUB_VALID_TASKS = ("text2text-generation", "text-generation", "text-to-image")
+HUGGINGFACE_HUB_VALID_TASKS = (
+    "text2text-generation",
+    "text-generation",
+    "text-to-image",
+)
+
 
 class HfHubProvider(BaseProvider, HuggingFaceHub):
     id = "huggingface_hub"
-    name = "HuggingFace Hub"
+    name = "Hugging Face Hub"
     models = ["*"]
     model_id_key = "repo_id"
+    help = (
+        "See https://huggingface.co/models for a list of models. "
+        "Pass a model's repository ID as the model ID; for example, `huggingface_hub:ExampleOwner/example-model`."
+    )
     # ipywidgets needed to suppress tqdm warning
     # https://stackoverflow.com/questions/67998191
     # tqdm is a dependency of huggingface_hub
@@ -237,10 +284,10 @@ class HfHubProvider(BaseProvider, HuggingFaceHub):
                 "Please install it with `pip install huggingface_hub`."
             )
         return values
-    
+
     # Handle image outputs
     def _call(self, prompt: str, stop: Optional[List[str]] = None) -> str:
-        """Call out to HuggingFace Hub's inference endpoint.
+        """Call out to Hugging Face Hub's inference endpoint.
 
         Args:
             prompt: The prompt to pass into the model.
@@ -262,21 +309,21 @@ class HfHubProvider(BaseProvider, HuggingFaceHub):
 
         # Custom code for responding to image generation responses
         if self.client.task == "text-to-image":
-            imageFormat = response.format # Presume it's a PIL ImageFile
-            mimeType = ''
-            if (imageFormat == 'JPEG'):
-                mimeType = 'image/jpeg'
-            elif (imageFormat == 'PNG'):
-                mimeType = 'image/png'
-            elif (imageFormat == 'GIF'):
-                mimeType = 'image/gif'
+            imageFormat = response.format  # Presume it's a PIL ImageFile
+            mimeType = ""
+            if imageFormat == "JPEG":
+                mimeType = "image/jpeg"
+            elif imageFormat == "PNG":
+                mimeType = "image/png"
+            elif imageFormat == "GIF":
+                mimeType = "image/gif"
             else:
                 raise ValueError(f"Unrecognized image format {imageFormat}")
-            
+
             buffer = io.BytesIO()
             response.save(buffer, format=imageFormat)
             # Encode image data to Base64 bytes, then decode bytes to str
-            return (mimeType + ';base64,' + base64.b64encode(buffer.getvalue()).decode())
+            return mimeType + ";base64," + base64.b64encode(buffer.getvalue()).decode()
 
         if self.client.task == "text-generation":
             # Text generation return includes the starter text.
@@ -293,6 +340,10 @@ class HfHubProvider(BaseProvider, HuggingFaceHub):
             # stop tokens when making calls to huggingface_hub.
             text = enforce_stop_tokens(text, stop)
         return text
+
+    async def _acall(self, *args, **kwargs) -> Coroutine[Any, Any, str]:
+        return await self._call_in_executor(*args, **kwargs)
+
 
 class OpenAIProvider(BaseProvider, OpenAI):
     id = "openai"
@@ -312,6 +363,7 @@ class OpenAIProvider(BaseProvider, OpenAI):
     pypi_package_deps = ["openai"]
     auth_strategy = EnvAuthStrategy(name="OPENAI_API_KEY")
 
+
 class ChatOpenAIProvider(BaseProvider, OpenAIChat):
     id = "openai-chat"
     name = "OpenAI"
@@ -330,14 +382,9 @@ class ChatOpenAIProvider(BaseProvider, OpenAIChat):
     def append_exchange(self, prompt: str, output: str):
         """Appends a conversational exchange between user and an OpenAI Chat
         model to a transcript that will be included in future exchanges."""
-        self.prefix_messages.append({
-            "role": "user",
-            "content": prompt
-        })
-        self.prefix_messages.append({
-            "role": "assistant",
-            "content": output
-        })
+        self.prefix_messages.append({"role": "user", "content": prompt})
+        self.prefix_messages.append({"role": "assistant", "content": output})
+
 
 # uses the new OpenAIChat provider. temporarily living as a separate class until
 # conflicts can be resolved
@@ -356,6 +403,7 @@ class ChatOpenAINewProvider(BaseProvider, ChatOpenAI):
     pypi_package_deps = ["openai"]
     auth_strategy = EnvAuthStrategy(name="OPENAI_API_KEY")
 
+
 class JsonContentHandler(LLMContentHandler):
     content_type = "application/json"
     accepts = "application/json"
@@ -372,46 +420,68 @@ class JsonContentHandler(LLMContentHandler):
                 d[key] = new_val
             if isinstance(val, dict):
                 self.replace_values(old_val, new_val, val)
-        
+
         return d
 
     def transform_input(self, prompt: str, model_kwargs: Dict) -> bytes:
         request_obj = copy.deepcopy(self.request_schema)
         self.replace_values("<prompt>", prompt, request_obj)
-        request = json.dumps(request_obj).encode('utf-8')
+        request = json.dumps(request_obj).encode("utf-8")
         return request
-    
+
     def transform_output(self, output: bytes) -> str:
         response_json = json.loads(output.read().decode("utf-8"))
         matches = self.response_parser.find(response_json)
         return matches[0].value
 
+
 class SmEndpointProvider(BaseProvider, SagemakerEndpoint):
     id = "sagemaker-endpoint"
-    name = "Sagemaker Endpoint"
+    name = "SageMaker endpoint"
     models = ["*"]
     model_id_key = "endpoint_name"
+    # This all needs to be on one line of markdown, for use in a table
+    help = (
+        "Specify an endpoint name as the model ID. "
+        "In addition, you must include the `--region_name`, `--request_schema`, and the `--response_path` arguments. "
+        "For more information, see the documentation about [SageMaker endpoints deployment](https://docs.aws.amazon.com/sagemaker/latest/dg/realtime-endpoints-deployment.html) "
+        "and about [using magic commands with SageMaker endpoints](https://jupyter-ai.readthedocs.io/en/latest/users/index.html#using-magic-commands-with-sagemaker-endpoints)."
+    )
+
     pypi_package_deps = ["boto3"]
     auth_strategy = AwsAuthStrategy()
     registry = True
     fields = [
-        TextField(
-            key="region_name",
-            label="Region name",
-        ),
-        MultilineTextField(
-            key="request_schema",
-            label="Request schema",
-        ),
-        TextField(
-            key="response_path",
-            label="Response path",
-        )
+        TextField(key="region_name", label="Region name", format="text"),
+        MultilineTextField(key="request_schema", label="Request schema", format="json"),
+        TextField(key="response_path", label="Response path", format="jsonpath"),
     ]
-    
+
     def __init__(self, *args, **kwargs):
-        request_schema = kwargs.pop('request_schema')
-        response_path = kwargs.pop('response_path')
-        content_handler = JsonContentHandler(request_schema=request_schema, response_path=response_path)
+        request_schema = kwargs.pop("request_schema")
+        response_path = kwargs.pop("response_path")
+        content_handler = JsonContentHandler(
+            request_schema=request_schema, response_path=response_path
+        )
         super().__init__(*args, **kwargs, content_handler=content_handler)
 
+    async def _acall(self, *args, **kwargs) -> Coroutine[Any, Any, str]:
+        return await self._call_in_executor(*args, **kwargs)
+
+
+class BedrockProvider(BaseProvider, Bedrock):
+    id = "bedrock"
+    name = "Amazon Bedrock"
+    models = [
+        "amazon.titan-tg1-large",
+        "anthropic.claude-v1",
+        "anthropic.claude-instant-v1",
+        "ai21.j2-jumbo-instruct",
+        "ai21.j2-grande-instruct",
+    ]
+    model_id_key = "model_id"
+    pypi_package_deps = ["boto3"]
+    auth_strategy = AwsAuthStrategy()
+
+    async def _acall(self, *args, **kwargs) -> Coroutine[Any, Any, str]:
+        return await self._call_in_executor(*args, **kwargs)

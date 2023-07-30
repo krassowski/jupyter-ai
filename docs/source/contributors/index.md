@@ -4,12 +4,9 @@ This page is intended for people interested in building new or modified function
 
 ## Prerequisites
 
-You can develop Jupyter AI on any system that can run a supported Python version up to and including 3.10, including recent Windows, macOS, and Linux versions.
+You can develop Jupyter AI on any system that can run a supported Python version up to and including 3.11, including recent Windows, macOS, and Linux versions.
 
-:::{important}
-:name: python-3-11-not-supported
-Because the [ray](https://pypi.org/project/ray/) library that Jupyter AI uses is not compatible with Python 3.11, please use a supported version of Python up to and including Python 3.10.
-:::
+Each Jupyter AI major version works with only one major version of JupyterLab. Jupyter AI 1.x supports JupyterLab 3.x, and Jupyter AI 2.x supports JupyterLab 4.x.
 
 We highly recommend that you install [conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) to start developing on Jupyter AI, especially if you are developing on macOS on an Apple Silicon-based Mac (M1, M1 Pro, M2, etc.).
 
@@ -21,10 +18,10 @@ Due to a compatibility issue with Webpack, Node.js 18.15.0 does not work with Ju
 :::
 
 ## Development install
-After you have installed the prerequisites, create a new conda environment and activate it. 
+After you have installed the prerequisites, create a new conda environment and activate it.
 
 ```
-conda create -n jupyter-ai python=3.10
+conda create -n jupyter-ai python=3.11
 conda activate jupyter-ai
 ```
 

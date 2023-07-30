@@ -2,37 +2,107 @@
 
 Welcome to the user documentation for Jupyter AI.
 
-If you are interested in contributing to Jupyter AI, 
+If you are interested in contributing to Jupyter AI,
 please see our {doc}`contributor's guide </contributors/index>`.
 
 ## Prerequisites
 
-You can run Jupyter AI on any system that can run a supported Python version from 3.8 to 3.10, including recent Windows, macOS, and Linux versions.
+You can run Jupyter AI on any system that can run a supported Python version
+from 3.8 to 3.11, including recent Windows, macOS, and Linux versions.
 
-:::{important}
-:name: python-3-11-not-supported
-Because the [ray](https://pypi.org/project/ray/) library that Jupyter AI uses is not compatible with Python 3.11, please use Python 3.8 to Python 3.10, inclusive.
-:::
-
-If you use `conda`, you can install Python 3.10 in your environment by running:
+If you use `conda`, you can install Python 3.11 in your environment by running:
 
 ```
-conda install python=3.10
+conda install python=3.11
 ```
 
-To use the `jupyter_ai` package, you will also need to have a currently-maintained version of JupyterLab 3 installed. We do not yet support JupyterLab 4. If you use `conda`, you can install JupyterLab in your environment by running:
+The `jupyter_ai` package, which provides the lab extension and user interface in
+JupyterLab, depends on JupyterLab 4. If upgrading to JupyterLab 4 is not
+possible in your environment, you should install `jupyter_ai` v1.x instead.
+See "Installation" for more details.
+
+You can install JupyterLab using `pip` or `conda`.
+
+1. via `pip`:
 
 ```
-conda install jupyterlab
+# change 4.0 to 3.0 if you need JupyterLab 3
+pip install jupyterlab~=4.0
 ```
 
-You should have Jupyter Server 2.x (not 1.x) installed. A fresh install of JupyterLab 3.6.x should come with Server 2.x. You can find your current Server version by running `jupyter --version` and checking for a line beginning with `jupyter_server`. To upgrade your version of Jupyter Server, run:
+2. via `conda`:
 
 ```
-pip install jupyter_server --upgrade
+# change 4.0 to 3.0 if you need JupyterLab 3
+conda config --add channels conda-forge
+conda config --set channel_priority strict
+conda install jupyterlab~=4.0
 ```
 
-You can use the `jupyter_ai_magics` package without JupyterLab, but you will need a compatible interface, such as [IPython](https://ipython.org/).
+The `jupyter_ai_magics` package, which provides exclusively the IPython magics,
+does not depend on JupyterLab or `jupyter_ai`. You can install
+`jupyter_ai_magics` without installing `jupyterlab` or `jupyter_ai`.
+
+## Installation
+
+### Installation via `pip`
+
+To install the JupyterLab extension, you can run:
+
+```
+pip install jupyter_ai
+```
+
+The latest major version of `jupyter_ai`, v2, only supports JupyterLab 4. If you
+need support for JupyterLab 3, you should install `jupyter_ai` v1 instead:
+
+```
+pip install jupyter_ai~=1.0
+```
+
+If you are not using JupyterLab and you only want to install the Jupyter AI `%%ai` magic, you can run:
+
+```
+$ pip install jupyter_ai_magics
+```
+
+`jupyter_ai` depends on `jupyter_ai_magics`, so installing `jupyter_ai`
+automatically installs `jupyter_ai_magics`.
+
+### Installation via `pip` within Conda environment (recommended)
+
+We highly recommend installing both JupyterLab and Jupyter AI within an isolated
+Conda environment to avoid clobbering Python packages in your existing Python
+environment.
+
+First, install
+[conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html)
+and create an environment that uses Python 3.11:
+
+    $ conda create -n jupyter-ai python=3.11
+    $ conda activate jupyter-ai
+    $ pip install jupyter_ai
+
+Then, follow the steps from "Requirements" and "Installation via `pip`" to
+install JupyterLab and Jupyter AI in this Conda environment.
+
+When starting JupyterLab with Jupyter AI, make sure to activate the Conda
+environment first:
+
+```
+conda activate jupyter-ai
+jupyter lab
+```
+
+## Uninstallation
+
+To remove the extension, run:
+
+    $ pip uninstall jupyter_ai
+
+or
+
+    $ pip uninstall jupyter_ai_magics
 
 ## Model providers
 
@@ -44,15 +114,28 @@ Jupyter AI supports the following model providers:
 |---------------------|----------------------|----------------------------|---------------------------------|
 | AI21                | `ai21`               | `AI21_API_KEY`             | `ai21`                          |
 | Anthropic           | `anthropic`          | `ANTHROPIC_API_KEY`        | `anthropic`                     |
+| Bedrock             | `amazon-bedrock`     | N/A                        | `boto3`                         |
 | Cohere              | `cohere`             | `COHERE_API_KEY`           | `cohere`                        |
-| HuggingFace Hub     | `huggingface_hub`    | `HUGGINGFACEHUB_API_TOKEN` | `huggingface_hub`, `ipywidgets`, `pillow` |
+| Hugging Face Hub    | `huggingface_hub`    | `HUGGINGFACEHUB_API_TOKEN` | `huggingface_hub`, `ipywidgets`, `pillow` |
 | OpenAI              | `openai`             | `OPENAI_API_KEY`           | `openai`                        |
 | OpenAI (chat)       | `openai-chat`        | `OPENAI_API_KEY`           | `openai`                        |
-| SageMaker          | `sagemaker-endpoint` | N/A                        | `boto3`                         |
+| SageMaker           | `sagemaker-endpoint` | N/A                        | `boto3`                         |
 
 The environment variable names shown above are also the names of the settings keys used when setting up the chat interface.
 
-You need the `pillow` Python package to use HuggingFace Hub's text-to-image models.
+To use the Bedrock models, you need access to the Bedrock service. For more information, see the
+[Amazon Bedrock Homepage](https://aws.amazon.com/bedrock/).
+
+To use Bedrock models, you will need to authenticate via
+[boto3](https://github.com/boto/boto3).
+
+You need the `pillow` Python package to use Hugging Face Hub's text-to-image models.
+
+You can find a list of Hugging Face's models at https://huggingface.co/models.
+
+SageMaker endpoint names are created when you deploy a model. For more information, see
+["Create your endpoint and deploy your model"](https://docs.aws.amazon.com/sagemaker/latest/dg/realtime-endpoints-deployment.html)
+in the SageMaker documentation.
 
 To use SageMaker's models, you will need to authenticate via
 [boto3](https://github.com/boto/boto3).
@@ -72,62 +155,9 @@ responsible for all charges they incur when they make API requests. Review your 
 provider's pricing information before submitting requests via Jupyter AI.
 :::
 
-## Installing
-
-You can use `conda` or `pip` to install Jupyter AI. If you're using macOS on an Apple Silicon-based Mac (M1, M1 Pro, M2, etc.), we strongly recommend using `conda`.
-
-Python 3.8 or newer is required; older versions of Python do not support the `typing` module we use, and as of June 30, 2023, have reached end of life. Because of Ray's incompatibility with Python 3.11, you must use Python 3.8, 3.9, or 3.10 with Jupyter AI. The instructions below presume that you are using Python 3.10.
-
-Before you can use Jupyter AI, you will need to install any packages and set environment variables with API keys for the model providers that you will use. See [our documentation](https://jupyter-ai.readthedocs.io/en/latest/users/index.html) for details about what you'll need.
-
-### With pip
-
-If you want to install both the `%%ai` magic and the JupyterLab extension, you can run:
-
-    $ pip install jupyter_ai
-
-If you are not using JupyterLab and you only want to install the Jupyter AI `%%ai` magic, you can run:
-
-    $ pip install jupyter_ai_magics
-
-
-### With conda
-
-First, install [conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) and create an environment that uses Python 3.10:
-
-    $ conda create -n jupyter-ai python=3.10
-    $ conda activate jupyter-ai
-    $ pip install jupyter_ai
-
-If you are using an Apple Silicon-based Mac (M1, M1 Pro, M2, etc.), you need to uninstall the `pip` provided version of `grpcio` and install the version provided by `conda` instead.
-
-    $ pip uninstall grpcio; conda install grpcio 
-
-If you are not using JupyterLab and you only want to install the Jupyter AI `%%ai` magic, you can run:
-
-    $ pip install jupyter_ai_magics
-
-The `%%ai` magic will work anywhere the IPython kernel runs (JupyterLab, Jupyter Notebook, Google Colab, VSCode, etc.).
-
-You can check that the Jupyter AI server extension is enabled by running:
-
-    $ jupyter server extension list
-
-To verify that the frontend extension is installed, run:
-
-    $ jupyter labextension list
-
-To remove the extension, run:
-
-    $ pip uninstall jupyter_ai
-
-or
-
-    $ pip uninstall jupyter_ai_magics
-
 ## The chat interface
 
-The easiest way to get started with Jupyter AI is to use the chat interface. 
+The easiest way to get started with Jupyter AI is to use the chat interface.
 
 :::{attention}
 :name: open-ai-privacy-cost
@@ -177,7 +207,19 @@ To compose a message, type it in the text box at the bottom of the chat interfac
     alt='Screen shot of an example "Hello world" message sent to Jupyternaut, who responds with "Hello world, how are you today?"'
     class="screenshot" />
 
-### Using the chat interrface with SageMaker endpoints
+The chat backend remembers the last two exchanges in your conversation and passes them to the language model. You can ask follow up questions without repeating information from your previous conversations. Here is an example of a chat conversation with a follow up question:
+
+#### Initial question
+<img src="../_static/chat-history-context-1.png"
+    alt='Screen shot of an example coding question sent to Jupyternaut, who responds with the code and explanation.'
+    class="screenshot" />
+
+#### Follow-up question
+<img src="../_static/chat-history-context-2.png"
+    alt='Screen shot of an example follow up question sent to Jupyternaut, who responds with the improved code and explanation.'
+    class="screenshot" />
+
+### Using the chat interface with SageMaker endpoints
 
 Jupyter AI supports language models hosted on SageMaker endpoints that use JSON
 schemas. The first step is to authenticate with AWS via the `boto3` SDK and have
@@ -311,6 +353,20 @@ To clear the local vector database, you can run `/learn -d` and Jupyter AI will 
     alt='Screen shot of a "/learn -d" command and a response.'
     class="screenshot" />
 
+With the `/learn` command, some models work better with custom chunk size and chunk overlap values. To override the defaults,
+use the `-c` or `--chunk-size` option and the `-o` or `--chunk-overlap` option.
+
+```
+# default chunk size and chunk overlap
+/learn <directory>
+
+# chunk size of 500, and chunk overlap of 50
+/learn -c 500 -o 50 <directory>
+
+# chunk size of 1000, and chunk overlap of 200
+/learn --chunk-size 1000 --chunk-overlap 200 <directory>
+```
+
 ### Additional chat commands
 
 To clear the chat panel, use the `/clear` command. This does not reset the AI model; the model may still remember previous messages that you sent it, and it may use them to inform its responses.
@@ -350,9 +406,10 @@ installed in your server's environment. In a notebook, run
 and re-run `%load_ext jupyter_ai_magics`.
 :::
 
-
-The `%%ai` magic command is user-friendly and enables you to quickly pick which
-model you want to use and specify natural language prompts.
+Once the extension has loaded, you can run `%%ai` cell magic commands and
+`%ai` line magic commands. Run `%%ai help` or `%ai help` for help with syntax.
+You can also pass `--help` as an argument to any line magic command (for example,
+`%ai list --help`) to learn about what the command does and how to use it.
 
 ### Choosing a provider and model
 
@@ -393,9 +450,9 @@ in notebooks while keeping the same concise syntax for invoking a language model
 
 The `%ai list` subcommand prints a list of available providers and models. Some
 providers explicitly define a list of supported models in their API. However,
-other providers, like HuggingFace Hub, lack a well-defined list of available
+other providers, like Hugging Face Hub, lack a well-defined list of available
 models. In such cases, it's best to consult the provider's upstream
-documentation. The [HuggingFace website](https://huggingface.co/) includes a
+documentation. The [Hugging Face website](https://huggingface.co/) includes a
 list of models, for example.
 
 Optionally, you can specify a provider ID as a positional argument to `%ai list`
@@ -427,7 +484,7 @@ an `%%ai` command will be formatted as markdown by default. You can override thi
 using the `-f` or `--format` argument to your magic command. Valid formats include:
 
 - `code`
-- `image` (for HuggingFace Hub's text-to-image models only)
+- `image` (for Hugging Face Hub's text-to-image models only)
 - `markdown`
 - `math`
 - `html`
@@ -449,7 +506,7 @@ will look like properly typeset equations.
 Generate the 2D heat equation in LaTeX surrounded by `$$`. Do not include an explanation.
 ```
 
-This prompt will produce output as a code cell below the input cell. 
+This prompt will produce output as a code cell below the input cell.
 
 :::{warning}
 :name: run-code
@@ -463,6 +520,21 @@ include calls to nonexistent (hallucinated) APIs.
 %%ai chatgpt -f code
 A function that computes the lowest common multiples of two integers, and
 a function that runs 5 test cases of the lowest common multiple function
+```
+
+### Clearing the OpenAI chat history
+
+With the `openai-chat` provider *only*, you can run a cell magic command using the `-r` or
+`--reset` option to clear the chat history. After you do this, previous magic commands you've
+run with the `openai-chat` provider will no longer be added as context in
+requests to this provider.
+
+Because the `%%ai` command is a cell magic, you must provide a prompt on the second line.
+This prompt will not be sent to the provider. A reset command will not generate any output.
+
+```
+%%ai openai-chat:gpt-3.5-turbo -r
+reset the chat history
 ```
 
 ### Interpolating in prompts

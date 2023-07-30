@@ -1,129 +1,71 @@
-from dataclasses import asdict
-import json
-from typing import Dict, List
-from jupyter_ai.actors.base import ACTOR_TYPE
-import ray
-import tornado
-import uuid
-import time
 import getpass
+import json
+import time
+import uuid
+from asyncio import AbstractEventLoop
+from dataclasses import asdict
+from typing import Dict, List
 
-from tornado.web import HTTPError
+import tornado
+from jupyter_ai.chat_handlers import BaseChatHandler
+from jupyter_server.base.handlers import APIHandler as BaseAPIHandler
+from jupyter_server.base.handlers import JupyterHandler
 from pydantic import ValidationError
-
 from tornado import web, websocket
-
-from jupyter_server.base.handlers import APIHandler as BaseAPIHandler, JupyterHandler
-from jupyter_server.utils import ensure_async
-
-from .task_manager import TaskManager
+from tornado.web import HTTPError
 
 from .models import (
-    ChatHistory,
-    ChatUser, 
-    ListProvidersEntry, 
-    ListProvidersResponse, 
-    PromptRequest, 
-    ChatRequest, 
-    ChatMessage, 
-    Message, 
-    AgentChatMessage, 
-    HumanChatMessage, 
-    ConnectionMessage, 
+    AgentChatMessage,
     ChatClient,
-    GlobalConfig
+    ChatHistory,
+    ChatMessage,
+    ChatRequest,
+    ChatUser,
+    ConnectionMessage,
+    GlobalConfig,
+    HumanChatMessage,
+    ListProvidersEntry,
+    ListProvidersResponse,
+    Message,
 )
-
-
-class APIHandler(BaseAPIHandler):
-    @property
-    def engines(self): 
-        return self.settings["ai_engines"]
-    
-    @property
-    def default_tasks(self):
-        return self.settings["ai_default_tasks"]
-
-    @property
-    def task_manager(self):
-        # we have to create the TaskManager lazily, since no event loop is
-        # running in ServerApp.initialize_settings().
-        if "task_manager" not in self.settings:
-            self.settings["task_manager"] = TaskManager(engines=self.engines, default_tasks=self.default_tasks)
-        return self.settings["task_manager"]
-    
-class PromptAPIHandler(APIHandler):
-    @tornado.web.authenticated
-    async def post(self):
-        try:
-            request = PromptRequest(**self.get_json_body())
-        except ValidationError as e:
-            self.log.exception(e)
-            raise HTTPError(500, str(e)) from e
-
-        if request.engine_id not in self.engines:
-            raise HTTPError(500, f"Model engine not registered: {request.engine_id}")
-
-        engine = self.engines[request.engine_id]
-        task = await self.task_manager.describe_task(request.task_id)
-        if not task:
-            raise HTTPError(404, f"Task not found with ID: {request.task_id}")
-        
-        output = await ensure_async(engine.execute(task, request.prompt_variables))
-
-        self.finish(json.dumps({
-            "output": output,
-            "insertion_mode": task.insertion_mode
-        }))
-
-class TaskAPIHandler(APIHandler):
-    @tornado.web.authenticated
-    async def get(self, id=None):
-        if id is None:
-            list_tasks_response = await self.task_manager.list_tasks()
-            self.finish(json.dumps(list_tasks_response.dict()))
-            return
-        
-        describe_task_response = await self.task_manager.describe_task(id)
-        if describe_task_response is None:
-            raise HTTPError(404, f"Task not found with ID: {id}")
-
-        self.finish(json.dumps(describe_task_response.dict()))
 
 
 class ChatHistoryHandler(BaseAPIHandler):
     """Handler to return message history"""
 
     _messages = []
-    
+
     @property
     def chat_history(self):
         return self.settings["chat_history"]
-    
+
     @chat_history.setter
     def _chat_history_setter(self, new_history):
         self.settings["chat_history"] = new_history
-    
+
     @tornado.web.authenticated
     async def get(self):
         history = ChatHistory(messages=self.chat_history)
         self.finish(history.json())
 
 
-class ChatHandler(
-    JupyterHandler,
-    websocket.WebSocketHandler
-):
+class RootChatHandler(JupyterHandler, websocket.WebSocketHandler):
     """
     A websocket handler for chat.
     """
-    
+
     @property
-    def chat_handlers(self) -> Dict[str, 'ChatHandler']:
-        """Dictionary mapping client IDs to their WebSocket handler
+    def root_chat_handlers(self) -> Dict[str, "RootChatHandler"]:
+        """Dictionary mapping client IDs to their corresponding RootChatHandler
         instances."""
-        return self.settings["chat_handlers"]
-    
+        return self.settings["jai_root_chat_handlers"]
+
+    @property
+    def chat_handlers(self) -> Dict[str, "BaseChatHandler"]:
+        """Dictionary mapping chat commands to their corresponding
+        BaseChatHandler instances."""
+        return self.settings["jai_chat_handlers"]
+
     @property
     def chat_clients(self) -> Dict[str, ChatClient]:
         """Dictionary mapping client IDs to their ChatClient objects that store
@@ -139,12 +81,15 @@ class ChatHandler(
     def chat_history(self) -> List[ChatMessage]:
         return self.settings["chat_history"]
 
+    @property
+    def loop(self) -> AbstractEventLoop:
+        return self.settings["jai_event_loop"]
+
     def initialize(self):
         self.log.debug("Initializing websocket connection %s", self.request.path)
 
     def pre_get(self):
-        """Handles authentication/authorization.
-        """
+        """Handles authentication/authorization."""
         # authenticate the request before opening the websocket
         user = self.current_user
         if user is None:
@@ -162,14 +107,16 @@ class ChatHandler(
         await res
 
     def get_chat_user(self) -> ChatUser:
-        """Retrieves the current user. If collaborative mode is disabled, one
-        is synthesized from the login."""
-        collaborative = self.config.get("LabApp", {}).get("collaborative", False)
+        """Retrieves the current user. If `jupyter_collaboration` is not
+        installed, one is synthesized from the server's current shell
+        environment."""
+        collaborative = self.config.ServerApp.jpserver_extensions.get_value({}).get(
+            "jupyter_collaboration", False
+        )
 
         if collaborative:
             return ChatUser(**asdict(self.current_user))
-        
-        
+
         login = getpass.getuser()
         return ChatUser(
             username=login,
@@ -177,9 +124,8 @@ class ChatHandler(
             name=login,
             display_name=login,
             color=None,
-            avatar_url=None
+            avatar_url=None,
         )
-
 
     def generate_client_id(self):
         """Generates a client ID to identify the current WS connection."""
@@ -192,34 +138,36 @@ class ChatHandler(
         current_user = self.get_chat_user().dict()
         client_id = self.generate_client_id()
 
-        self.chat_handlers[client_id] = self
+        self.root_chat_handlers[client_id] = self
         self.chat_clients[client_id] = ChatClient(**current_user, id=client_id)
         self.client_id = client_id
         self.write_message(ConnectionMessage(client_id=client_id).dict())
 
         self.log.info(f"Client connected. ID: {client_id}")
-        self.log.debug("Clients are : %s", self.chat_handlers.keys())
+        self.log.debug("Clients are : %s", self.root_chat_handlers.keys())
 
     def broadcast_message(self, message: Message):
-        """Broadcasts message to all connected clients. 
+        """Broadcasts message to all connected clients.
         Appends message to `self.chat_history`.
         """
 
         self.log.debug("Broadcasting message: %s to all clients...", message)
-        client_ids = self.chat_handlers.keys()
-        
+        client_ids = self.root_chat_handlers.keys()
+
         for client_id in client_ids:
-            client = self.chat_handlers[client_id]
+            client = self.root_chat_handlers[client_id]
             if client:
                 client.write_message(message.dict())
-        
+
         # Only append ChatMessage instances to history, not control messages
-        if isinstance(message, HumanChatMessage) or isinstance(message, AgentChatMessage):
+        if isinstance(message, HumanChatMessage) or isinstance(
+            message, AgentChatMessage
+        ):
             self.chat_history.append(message)
 
     async def on_message(self, message):
         self.log.debug("Message recieved: %s", message)
-        
+
         try:
             message = json.loads(message)
             chat_request = ChatRequest(**message)
@@ -239,37 +187,51 @@ class ChatHandler(
         # broadcast the message to other clients
         self.broadcast_message(message=chat_message)
 
-        # Clear the message history if given the /clear command
-        if chat_request.prompt.startswith('/'):
-            command = chat_request.prompt.split(' ', 1)[0]
-            if command == '/clear':
-                self.chat_history.clear()
+        # do not await this, as it blocks the parent task responsible for
+        # handling messages from a websocket.  instead, process each message
+        # as a distinct concurrent task.
+        self.loop.create_task(self._route(chat_message))
 
-        # process through the router
-        router = ray.get_actor("router")
-        router.process_message.remote(chat_message)
+    async def _route(self, message):
+        """Method that routes an incoming message to the appropriate handler."""
+        default = self.chat_handlers["default"]
+        maybe_command = message.body.split(" ", 1)[0]
+        is_command = (
+            message.body.startswith("/")
+            and maybe_command in self.chat_handlers.keys()
+            and maybe_command != "default"
+        )
+        command = maybe_command if is_command else "default"
+
+        start = time.time()
+        if is_command:
+            await self.chat_handlers[command].process_message(message)
+        else:
+            await default.process_message(message)
+
+        latency_ms = round((time.time() - start) * 1000)
+        command_readable = "Default" if command == "default" else command
+        self.log.info(f"{command_readable} chat handler resolved in {latency_ms} ms.")
 
     def on_close(self):
         self.log.debug("Disconnecting client with user %s", self.client_id)
 
-        self.chat_handlers.pop(self.client_id, None)
+        self.root_chat_handlers.pop(self.client_id, None)
         self.chat_clients.pop(self.client_id, None)
 
         self.log.info(f"Client disconnected. ID: {self.client_id}")
-        self.log.debug("Chat clients: %s", self.chat_handlers.keys())
+        self.log.debug("Chat clients: %s", self.root_chat_handlers.keys())
 
 
 class ModelProviderHandler(BaseAPIHandler):
     @property
-    def chat_providers(self): 
-        actor = ray.get_actor("providers")
-        o = actor.get_model_providers.remote()
-        return ray.get(o)
-    
+    def lm_providers(self):
+        return self.settings["lm_providers"]
+
     @web.authenticated
     def get(self):
         providers = []
-        for provider in self.chat_providers.values():
+        for provider in self.lm_providers.values():
             # skip old legacy OpenAI chat provider used only in magics
             if provider.id == "openai-chat":
                 continue
@@ -284,23 +246,22 @@ class ModelProviderHandler(BaseAPIHandler):
                     fields=provider.fields,
                 )
             )
-        
-        response = ListProvidersResponse(providers=sorted(providers, key=lambda p: p.name))
+
+        response = ListProvidersResponse(
+            providers=sorted(providers, key=lambda p: p.name)
+        )
         self.finish(response.json())
 
 
 class EmbeddingsModelProviderHandler(BaseAPIHandler):
-    
     @property
-    def embeddings_providers(self):
-        actor = ray.get_actor("providers")
-        o = actor.get_embeddings_providers.remote()
-        return ray.get(o)
+    def em_providers(self):
+        return self.settings["em_providers"]
 
     @web.authenticated
     def get(self):
         providers = []
-        for provider in self.embeddings_providers.values():
+        for provider in self.em_providers.values():
             providers.append(
                 ListProvidersEntry(
                     id=provider.id,
@@ -311,8 +272,10 @@ class EmbeddingsModelProviderHandler(BaseAPIHandler):
                     fields=provider.fields,
                 )
             )
-        
-        response = ListProvidersResponse(providers=sorted(providers, key=lambda p: p.name))
+
+        response = ListProvidersResponse(
+            providers=sorted(providers, key=lambda p: p.name)
+        )
         self.finish(response.json())
 
 
@@ -320,35 +283,34 @@ class GlobalConfigHandler(BaseAPIHandler):
     """API handler for fetching and setting the
     model and emebddings config.
     """
-    
+
+    @property
+    def config_manager(self):
+        return self.settings["jai_config_manager"]
+
     @web.authenticated
     def get(self):
-        actor = ray.get_actor(ACTOR_TYPE.CONFIG)
-        config = ray.get(actor.get_config.remote())
+        config = self.config_manager.get_config()
         if not config:
             raise HTTPError(500, "No config found.")
-        
+
         self.finish(config.json())
 
     @web.authenticated
     def post(self):
         try:
             config = GlobalConfig(**self.get_json_body())
-            actor = ray.get_actor(ACTOR_TYPE.CONFIG)
-            ray.get(actor.update.remote(config))
-
+            self.config_manager.update(config)
             self.set_status(204)
             self.finish()
-
         except ValidationError as e:
             self.log.exception(e)
             raise HTTPError(500, str(e)) from e
         except ValueError as e:
             self.log.exception(e)
-            raise HTTPError(500, str(e.cause) if hasattr(e, 'cause') else str(e))
+            raise HTTPError(500, str(e.cause) if hasattr(e, "cause") else str(e))
         except Exception as e:
             self.log.exception(e)
             raise HTTPError(
                 500, "Unexpected error occurred while updating the config."
             ) from e
-
