@@ -9,7 +9,7 @@ from jupyter_ai_magics import JupyternautPersona
 from jupyter_ai_magics.utils import get_em_providers, get_lm_providers
 from jupyter_server.extension.application import ExtensionApp
 from tornado.web import StaticFileHandler
-from traitlets import Dict, List, Unicode
+from traitlets import Dict, List, Type, Unicode
 
 from .chat_handlers import (
     AskChatHandler,
@@ -21,7 +21,6 @@ from .chat_handlers import (
     LearnChatHandler,
 )
 from .chat_handlers.help import build_help_message
-from .completions.handlers import DefaultInlineCompletionHandler
 from .config_manager import ConfigManager
 from .handlers import (
     ApiKeysHandler,
@@ -47,7 +46,6 @@ class AiExtension(ExtensionApp):
         (r"api/ai/chats/history?", ChatHistoryHandler),
         (r"api/ai/providers?", ModelProviderHandler),
         (r"api/ai/providers/embeddings?", EmbeddingsModelProviderHandler),
-        (r"api/ai/completion/inline/?", DefaultInlineCompletionHandler),
         # serve the default persona avatar at this path.
         # the `()` at the end of the URL denotes an empty regex capture group,
         # required by Tornado.
@@ -153,6 +151,20 @@ class AiExtension(ExtensionApp):
         """,
         config=True,
     )
+
+    innline_completer_handler_class = Type(
+        default_value="jupyter_ai.completions.handlers.DefaultInlineCompletionHandler",
+        klass="jupyter_ai.completions.handlers.BaseInlineCompletionHandler",
+        config=True,
+        help="The inline completion handler class to use.",
+    )
+
+    def initialize_handlers(self):
+        self.handlers.extend(
+            [
+                (r"api/ai/completion/inline/?", self.innline_completer_handler_class),
+            ]
+        )
 
     def initialize_settings(self):
         start = time.time()
