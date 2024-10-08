@@ -1,6 +1,6 @@
 import asyncio
 import time
-from typing import Any, Dict, Type
+from typing import Any, Dict, Type, Union
 from uuid import uuid4
 
 from jupyter_ai.callback_handlers import MetadataCallbackHandler
@@ -8,6 +8,7 @@ from jupyter_ai.models import (
     AgentStreamChunkMessage,
     AgentStreamMessage,
     HumanChatMessage,
+    StopMessage,
 )
 from jupyter_ai_magics.providers import BaseProvider
 from langchain_core.messages import AIMessageChunk
@@ -15,7 +16,6 @@ from langchain_core.runnables import ConfigurableFieldSpec
 from langchain_core.runnables.history import RunnableWithMessageHistory
 
 from ..context_providers import ContextProviderException, find_commands
-from ..models import HumanChatMessage
 from .base import BaseChatHandler, SlashCommandRoutingType
 
 
@@ -108,10 +108,20 @@ class DefaultChatHandler(BaseChatHandler):
             handler.broadcast_message(stream_chunk_msg)
             break
 
-    async def process_message(self, message: HumanChatMessage):
+    async def process_message(self, message: Union[HumanChatMessage, StopMessage]):
         self.get_llm_chain()
         received_first_chunk = False
         assert self.llm_chain
+
+        if message.type == "stop":
+            # print("Stopping streaming")
+            # TODO: use a queue shared between handlers to communicate (or is a shared setting enough)?
+            # self._steam = False
+            # this currently does not affect the other copy of the handler
+            # TODO either:
+            # self.llm_chain.stream_cancelled()
+            # OR (preferably?) gen.athrow() or similar
+            return
 
         inputs = {"input": message.body}
         if "context" in self.prompt_template.input_variables:
@@ -130,6 +140,7 @@ class DefaultChatHandler(BaseChatHandler):
             # implement streaming, as `astream()` defaults to yielding `_call()`
             # when `_stream()` is not implemented on the LLM class.
             metadata_handler = MetadataCallbackHandler()
+            self._steam = True
             async for chunk in self.llm_chain.astream(
                 inputs,
                 config={
@@ -143,6 +154,11 @@ class DefaultChatHandler(BaseChatHandler):
                     self.close_pending(pending_message)
                     stream_id = self._start_stream(human_msg=message)
                     received_first_chunk = True
+                    self.message_interrupted[stream_id] = asyncio.Event()
+
+                if self.message_interrupted[stream_id].is_set():
+                    print("Not yielding the chunk as streaming was cancelled")
+                    break
 
                 if isinstance(chunk, AIMessageChunk) and isinstance(chunk.content, str):
                     self._send_stream_chunk(stream_id, chunk.content)
